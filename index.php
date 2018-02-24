@@ -18,7 +18,7 @@ class ftp_sync
 	public static $ftp_user  = 'user';
 	public static $ftp_pass  = '123';
 	public static $ftp_port  = 21;
-	public static $ftp_path  = 'reza/1/';
+	public static $ftp_path  = 'reza/1/2/3/';
 	public static $directory = '/home/reza/project/ftp_sync_test/';
 
 
@@ -59,9 +59,25 @@ class ftp_sync
 			}
 		}
 
-		ftp::rmdir(self::$ftp_path);
-		ftp::mkdir(self::$ftp_path);
-		ftp::chdir(self::$ftp_path);
+		$ftp_path_split = explode(DIRECTORY_SEPARATOR, self::$ftp_path);
+		$ftp_path_split = array_filter($ftp_path_split);
+
+		foreach ($ftp_path_split as $key => $value)
+		{
+			if(!@ftp::chdir($value. DIRECTORY_SEPARATOR))
+			{
+				ftp::mkdir($value);
+				ftp::chdir($value);
+			}
+		}
+
+		$get = ftp::get(ftp::pwd());
+		var_dump($get);
+
+		// ftp::rmdir(self::$ftp_path);
+		// ftp::mkdir(self::$ftp_path);
+		// ftp::chdir(self::$ftp_path);
+
 		self::ftp_copy(self::$directory, self::$ftp_path);
 	}
 
