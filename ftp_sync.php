@@ -14,14 +14,22 @@ class ftp_sync
 	public static $ftp_path  = null;
 	public static $directory = null;
 	public static $debug     = false;
+	public static $errors    = [];
+	public static $status    = true;
 
 	private static $master_pwd = null;
 
 
-	public static function error($_msg)
+	private static function set_error($_msg)
 	{
-		echo $_msg;
-		exit();
+		self::$status   = false;
+		self::$errors[] = $_msg;
+	}
+
+
+	public static function error()
+	{
+		return self::$errors;
 	}
 
 
@@ -36,24 +44,35 @@ class ftp_sync
 			error_reporting(E_ALL);
 		}
 
+		if(!self::$ftp_host)  self::set_error("ftp_host not set");
+		if(!self::$ftp_user)  self::set_error("ftp_user not set");
+		if(!self::$ftp_pass)  self::set_error("ftp_pass not set");
+		if(!self::$ftp_port)  self::set_error("ftp_port not set");
+		if(!self::$ftp_path)  self::set_error("ftp_path not set");
+		if(!self::$directory) self::set_error("directory not set");
+
+		if(!self::$status) return false;
+
 		$connect = ftp::connect(self::$ftp_host, self::$ftp_user, self::$ftp_pass, self::$ftp_port);
 
 		if(!$connect)
 		{
-			return self::error('can not connect to server');
+			return self::set_error('can not connect to server');
 		}
 
 		if(!@ftp::chdir(self::$ftp_path))
 		{
-			return self::error('can not chdir to remote server');
+			return self::set_error('can not chdir to remote server');
 		}
 
 		self::$master_pwd = ftp::pwd();
 
 		if(!@chdir(self::$directory))
 		{
-			return self::error('can not chdir to ftp path');
+			return self::set_error('can not chdir to ftp path');
 		}
+
+		if(!self::$status) return false;
 
 		self::clean(self::$master_pwd);
 
@@ -62,6 +81,8 @@ class ftp_sync
 		self::send(self::$directory);
 
 		ftp::close();
+
+		return true;
 	}
 
 
@@ -91,7 +112,7 @@ class ftp_sync
 	{
 		chdir($_directory);
 
-		$list = glob(getcwd(). "/*");
+		$list = glob(getcwd(). DIRECTORY_SEPARATOR. "*");
 		if(is_array($list))
 		{
 			foreach ($list as $key => $value)
@@ -116,7 +137,7 @@ class ftp_sync
 				{
 					$file = explode(DIRECTORY_SEPARATOR, $value);
 					$file = end($file);
-					ftp::put(ftp::pwd(). '/'. $file, $value, FTP_ASCII);
+					ftp::put(ftp::pwd(). DIRECTORY_SEPARATOR. $file, $value, FTP_ASCII);
 				}
 			}
 		}

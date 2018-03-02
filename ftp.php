@@ -45,7 +45,6 @@ class ftp
 			self::$login = $login;
 		}
 		return $login;
-
 	}
 
 
