@@ -18,19 +18,19 @@ class ftp_sync
 	public static $ftp_user  = 'user';
 	public static $ftp_pass  = '123';
 	public static $ftp_port  = 21;
-	public static $ftp_path  = 'reza/1/2/3/';
+	public static $ftp_path  = 'reza/1/2/';
 	public static $directory = '/home/reza/project/ftp_sync_test/';
 
 
-	public static function error($_msg, $_group)
+	public static function error($_msg, $_group = null)
 	{
-		return $_msg;
+		echo $_msg;
+		exit();
 	}
 
 
 	public static function run()
 	{
-
 		$connect = ftp::connect(self::$ftp_host, self::$ftp_user, self::$ftp_pass, self::$ftp_port);
 
 		if(!$connect)
@@ -38,7 +38,9 @@ class ftp_sync
 			return self::error('can not connect to server');
 		}
 
-		if(!chdir(self::$directory))
+		$master_pwd = ftp::pwd();
+
+		if(!@chdir(self::$directory))
 		{
 			return self::error('can not chdir to ftp path');
 		}
@@ -59,28 +61,66 @@ class ftp_sync
 			}
 		}
 
-		$ftp_path_split = explode(DIRECTORY_SEPARATOR, self::$ftp_path);
-		$ftp_path_split = array_filter($ftp_path_split);
+		self::clean();
 
-		foreach ($ftp_path_split as $key => $value)
+		ftp::chdir($master_pwd);
+		ftp::chdir(self::$ftp_path);
+
+		self::send(self::$directory);
+
+		// self::ftp_copy(self::$directory, self::$ftp_path);
+	}
+
+	private static function send($_directory)
+	{
+		chdir($_directory);
+		$list = glob(getcwd(). "/*");
+		if(is_array($list))
 		{
-			if(!@ftp::chdir($value. DIRECTORY_SEPARATOR))
+			foreach ($list as $key => $value)
 			{
-				ftp::mkdir($value);
-				ftp::chdir($value);
+				if(is_dir($value))
+				{
+					$folder = explode(DIRECTORY_SEPARATOR, $value);
+					$folder = end($folder);
+					$new_dir  = ftp::mkdir($folder);
+					if($new_dir)
+					{
+						ftp::chdir($new_dir);
+					}
+					self::send($value);
+				}
+				else
+				{
+
+					$file = explode(DIRECTORY_SEPARATOR, $value);
+					$file = end($file);
+					ftp::put(ftp::pwd(). '/'. $file, $value, FTP_ASCII);
+				}
 			}
 		}
 
-		$get = ftp::get(ftp::pwd());
-		var_dump($get);
-
-		// ftp::rmdir(self::$ftp_path);
-		// ftp::mkdir(self::$ftp_path);
-		// ftp::chdir(self::$ftp_path);
-
-		self::ftp_copy(self::$directory, self::$ftp_path);
 	}
 
+
+	private static function clean()
+	{
+		$list = ftp::nlist(".");
+		if(is_array($list))
+		{
+			foreach ($list as $key => $value)
+			{
+				if(@ftp::chdir($value))
+				{
+					self::clean();
+				}
+				else
+				{
+					@ftp::delete($value);
+				}
+			}
+		}
+	}
 
 	public static function ftp_copy($_from, $_to)
 	{
