@@ -59,6 +59,7 @@ class ftp_sync
 	private static function send($_directory)
 	{
 		chdir($_directory);
+
 		$list = glob(getcwd(). "/*");
 		if(is_array($list))
 		{
@@ -74,17 +75,20 @@ class ftp_sync
 						ftp::chdir($new_dir);
 					}
 					self::send($value);
+					$current_pwd = ftp::pwd();
+					$folder = explode(DIRECTORY_SEPARATOR, $current_pwd);
+					array_pop($folder);
+					$folder = implode(DIRECTORY_SEPARATOR, $folder);
+					ftp::chdir($folder);
 				}
 				else
 				{
-
 					$file = explode(DIRECTORY_SEPARATOR, $value);
 					$file = end($file);
 					ftp::put(ftp::pwd(). '/'. $file, $value, FTP_ASCII);
 				}
 			}
 		}
-
 	}
 
 
