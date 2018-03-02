@@ -1,2 +1,2 @@
-# ftp_sync
-Sync directory to ftp server
+### ftp_sync
+# Sync local directory to ftp server
