@@ -38,7 +38,11 @@ class ftp_sync
 			return self::error('can not connect to server');
 		}
 
-		ftp::chdir(self::$ftp_path);
+		if(!@ftp::chdir(self::$ftp_path))
+		{
+			return self::error('can not chdir to remote server');
+		}
+
 		self::$master_pwd = ftp::pwd();
 
 		if(!@chdir(self::$directory))
