@@ -20,7 +20,7 @@ class ftp_sync
 	public static $ftp_port  = 21;
 	public static $ftp_path  = 'reza/1/2/';
 	public static $directory = '/home/reza/project/ftp_sync_test/';
-
+	private static $master_pwd = null;
 
 	public static function error($_msg, $_group = null)
 	{
@@ -38,37 +38,22 @@ class ftp_sync
 			return self::error('can not connect to server');
 		}
 
-		$master_pwd = ftp::pwd();
+		ftp::chdir(self::$ftp_path);
+		self::$master_pwd = ftp::pwd();
 
 		if(!@chdir(self::$directory))
 		{
 			return self::error('can not chdir to ftp path');
 		}
 
-		$path       = realpath(''). DIRECTORY_SEPARATOR;
-		$fdirectory = new \RecursiveDirectoryIterator($path);
-		$flattened  = new \RecursiveIteratorIterator($fdirectory);
-		$files      = new \RegexIterator($flattened, "/.*/");
-		$paths      = [];
+		self::clean(self::$master_pwd);
 
-		foreach($files as $file)
-		{
-			$file_name = $file->getFilename();
-			if($file_name !== '.' && $file_name !== '..')
-			{
-				$file_name = $file->getPath() . DIRECTORY_SEPARATOR . $file_name;
-				$paths[] = $file_name;
-			}
-		}
-
-		self::clean();
-
-		ftp::chdir($master_pwd);
-		ftp::chdir(self::$ftp_path);
+		ftp::chdir(self::$master_pwd);
 
 		self::send(self::$directory);
 
-		// self::ftp_copy(self::$directory, self::$ftp_path);
+		ftp::close();
+
 	}
 
 	private static function send($_directory)
@@ -103,50 +88,26 @@ class ftp_sync
 	}
 
 
-	private static function clean()
+	private static function clean($_directory)
 	{
-		$list = ftp::nlist(".");
+		$list = ftp::nlist($_directory);
+
 		if(is_array($list))
 		{
 			foreach ($list as $key => $value)
 			{
 				if(@ftp::chdir($value))
 				{
-					self::clean();
+					self::clean($value);
+					ftp::rmdir($value);
 				}
 				else
 				{
-					@ftp::delete($value);
+					ftp::delete($value);
 				}
 			}
 		}
 	}
-
-	public static function ftp_copy($_from, $_to)
-	{
-		$d = dir($_from);
-
-	    while($file = $d->read())
-	    {
-	        if ($file != "." && $file != "..")
-	        {
-	            if (is_dir($_from."/".$file))
-	            {
-	                if (!@ftp::chdir($_to."/".$file))
-	                {
-	                	ftp::mkdir($_to."/".$file);
-	                }
-	            	self::ftp_copy($_from."/".$file, $_to."/".$file);
-	            }
-	            else
-	            {
-	            	$upload = ftp::put($_to."/".$file, $_from."/".$file, FTP_BINARY);
-	            }
-	        }
-	    }
-		$d->close();
-	}
-
 }
 
 ftp_sync::run();
